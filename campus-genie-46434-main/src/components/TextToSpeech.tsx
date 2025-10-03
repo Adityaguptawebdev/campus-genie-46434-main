@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,7 +21,7 @@ export const TextToSpeech = () => {
   const { toast } = useToast();
 
   // Load voices
-  useState(() => {
+  useEffect(() => {
     const loadVoices = () => {
       const availableVoices = window.speechSynthesis.getVoices();
       setVoices(availableVoices);
@@ -30,9 +30,24 @@ export const TextToSpeech = () => {
       }
     };
 
+    // Initial attempt
     loadVoices();
+
+    // Some browsers populate voices asynchronously
     window.speechSynthesis.onvoiceschanged = loadVoices;
-  });
+
+    // Fallback: try again shortly if list was empty on mount
+    const fallbackTimer = setTimeout(() => {
+      if (voices.length === 0) {
+        loadVoices();
+      }
+    }, 300);
+
+    return () => {
+      window.speechSynthesis.onvoiceschanged = null as any;
+      clearTimeout(fallbackTimer);
+    };
+  }, [selectedVoice, voices.length]);
 
   const speak = () => {
     if (!text.trim()) {
